@@ -2,7 +2,8 @@
 
 require_once __DIR__ . '/../model/PatientModel.php';
 require_once __DIR__ . '/../model/ReportModel.php';
-require_once __DIR__ . '/../libs/fpdf.php';
+require_once __DIR__ . '/../assets/libs/fpdf.php';
+require_once __DIR__ . '/../assets/libs/TestRanges.php';
 
 class ReportController
 {
@@ -24,14 +25,6 @@ class ReportController
         return (int)$_SESSION['doctor_id'];
     }
 
-    private function validateNumericReading(?string $value): bool
-    {
-        if ($value === null || trim($value) === '') {
-            return false;
-        }
-        return is_numeric($value) && (float)$value >= 0;
-    }
-
     public function create(): void
     {
         $doctorId = $this->ensureDoctorIsAuthenticated();
@@ -48,73 +41,10 @@ class ReportController
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $reportType = trim($_POST['report_type'] ?? '');
-            $results = [];
-
-            if ($reportType === 'FBC') {
-                $hemoglobin = trim($_POST['hemoglobin'] ?? '');
-                $whiteBloodCells = trim($_POST['white_blood_cells'] ?? '');
-                $redBloodCells = trim($_POST['red_blood_cells'] ?? '');
-                $platelets = trim($_POST['platelets'] ?? '');
-                $hematocrit = trim($_POST['hematocrit'] ?? '');
-
-                if (
-                    !$this->validateNumericReading($hemoglobin) ||
-                    !$this->validateNumericReading($whiteBloodCells) ||
-                    !$this->validateNumericReading($redBloodCells) ||
-                    !$this->validateNumericReading($platelets) ||
-                    !$this->validateNumericReading($hematocrit)
-                ) {
-                    $errorMessage = 'All Full Blood Count parameters are required and must be valid non-negative numbers.';
-                } else {
-                    $results = [
-                        'Hemoglobin (g/dL)' => $hemoglobin,
-                        'White Blood Cell Count (x10^9/L)' => $whiteBloodCells,
-                        'Red Blood Cell Count (x10^12/L)' => $redBloodCells,
-                        'Platelet Count (x10^9/L)' => $platelets,
-                        'Hematocrit (%)' => $hematocrit,
-                    ];
-                }
-            } elseif ($reportType === 'Lipid Profile') {
-                $totalCholesterol = trim($_POST['total_cholesterol'] ?? '');
-                $triglycerides = trim($_POST['triglycerides'] ?? '');
-                $hdlCholesterol = trim($_POST['hdl_cholesterol'] ?? '');
-                $ldlCholesterol = trim($_POST['ldl_cholesterol'] ?? '');
-
-                if (
-                    !$this->validateNumericReading($totalCholesterol) ||
-                    !$this->validateNumericReading($triglycerides) ||
-                    !$this->validateNumericReading($hdlCholesterol) ||
-                    !$this->validateNumericReading($ldlCholesterol)
-                ) {
-                    $errorMessage = 'All Lipid Profile parameters are required and must be valid non-negative numbers.';
-                } else {
-                    $results = [
-                        'Total Cholesterol (mg/dL)' => $totalCholesterol,
-                        'Triglycerides (mg/dL)' => $triglycerides,
-                        'HDL Cholesterol (mg/dL)' => $hdlCholesterol,
-                        'LDL Cholesterol (mg/dL)' => $ldlCholesterol,
-                    ];
-                }
-            } elseif ($reportType === 'Blood Sugar') {
-                $fastingBloodSugar = trim($_POST['fasting_blood_sugar'] ?? '');
-                $postprandialBloodSugar = trim($_POST['postprandial_blood_sugar'] ?? '');
-                $hba1c = trim($_POST['hba1c'] ?? '');
-
-                if (
-                    !$this->validateNumericReading($fastingBloodSugar) ||
-                    !$this->validateNumericReading($postprandialBloodSugar) ||
-                    !$this->validateNumericReading($hba1c)
-                ) {
-                    $errorMessage = 'All Blood Sugar parameters are required and must be valid non-negative numbers.';
-                } else {
-                    $results = [
-                        'Fasting Blood Sugar (mg/dL)' => $fastingBloodSugar,
-                        'Postprandial Blood Sugar (mg/dL)' => $postprandialBloodSugar,
-                        'HbA1c (%)' => $hba1c,
-                    ];
-                }
-            } else {
-                $errorMessage = 'Please select a valid report type.';
+            try {
+                $results = ReportTemplateModel::readValues($reportType, $_POST);
+            } catch (InvalidArgumentException $error) {
+                $errorMessage = $error->getMessage();
             }
 
             if (empty($errorMessage)) {
@@ -172,73 +102,10 @@ class ReportController
 
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $reportType = trim($_POST['report_type'] ?? '');
-            $newResults = [];
-
-            if ($reportType === 'FBC') {
-                $hemoglobin = trim($_POST['hemoglobin'] ?? '');
-                $whiteBloodCells = trim($_POST['white_blood_cells'] ?? '');
-                $redBloodCells = trim($_POST['red_blood_cells'] ?? '');
-                $platelets = trim($_POST['platelets'] ?? '');
-                $hematocrit = trim($_POST['hematocrit'] ?? '');
-
-                if (
-                    !$this->validateNumericReading($hemoglobin) ||
-                    !$this->validateNumericReading($whiteBloodCells) ||
-                    !$this->validateNumericReading($redBloodCells) ||
-                    !$this->validateNumericReading($platelets) ||
-                    !$this->validateNumericReading($hematocrit)
-                ) {
-                    $errorMessage = 'All Full Blood Count parameters are required and must be valid non-negative numbers.';
-                } else {
-                    $newResults = [
-                        'Hemoglobin (g/dL)' => $hemoglobin,
-                        'White Blood Cell Count (x10^9/L)' => $whiteBloodCells,
-                        'Red Blood Cell Count (x10^12/L)' => $redBloodCells,
-                        'Platelet Count (x10^9/L)' => $platelets,
-                        'Hematocrit (%)' => $hematocrit,
-                    ];
-                }
-            } elseif ($reportType === 'Lipid Profile') {
-                $totalCholesterol = trim($_POST['total_cholesterol'] ?? '');
-                $triglycerides = trim($_POST['triglycerides'] ?? '');
-                $hdlCholesterol = trim($_POST['hdl_cholesterol'] ?? '');
-                $ldlCholesterol = trim($_POST['ldl_cholesterol'] ?? '');
-
-                if (
-                    !$this->validateNumericReading($totalCholesterol) ||
-                    !$this->validateNumericReading($triglycerides) ||
-                    !$this->validateNumericReading($hdlCholesterol) ||
-                    !$this->validateNumericReading($ldlCholesterol)
-                ) {
-                    $errorMessage = 'All Lipid Profile parameters are required and must be valid non-negative numbers.';
-                } else {
-                    $newResults = [
-                        'Total Cholesterol (mg/dL)' => $totalCholesterol,
-                        'Triglycerides (mg/dL)' => $triglycerides,
-                        'HDL Cholesterol (mg/dL)' => $hdlCholesterol,
-                        'LDL Cholesterol (mg/dL)' => $ldlCholesterol,
-                    ];
-                }
-            } elseif ($reportType === 'Blood Sugar') {
-                $fastingBloodSugar = trim($_POST['fasting_blood_sugar'] ?? '');
-                $postprandialBloodSugar = trim($_POST['postprandial_blood_sugar'] ?? '');
-                $hba1c = trim($_POST['hba1c'] ?? '');
-
-                if (
-                    !$this->validateNumericReading($fastingBloodSugar) ||
-                    !$this->validateNumericReading($postprandialBloodSugar) ||
-                    !$this->validateNumericReading($hba1c)
-                ) {
-                    $errorMessage = 'All Blood Sugar parameters are required and must be valid non-negative numbers.';
-                } else {
-                    $newResults = [
-                        'Fasting Blood Sugar (mg/dL)' => $fastingBloodSugar,
-                        'Postprandial Blood Sugar (mg/dL)' => $postprandialBloodSugar,
-                        'HbA1c (%)' => $hba1c,
-                    ];
-                }
-            } else {
-                $errorMessage = 'Please select a valid report type.';
+            try {
+                $newResults = ReportTemplateModel::readValues($reportType, $_POST);
+            } catch (InvalidArgumentException $error) {
+                $errorMessage = $error->getMessage();
             }
 
             if (empty($errorMessage)) {
@@ -321,15 +188,23 @@ class ReportController
         $pdf->Cell(0, 8, $report['created_at'], 1, 1);
         $pdf->Ln(6);
 
-        $pdf->SetFont('Arial', 'B', 11);
-        $pdf->Cell(110, 8, 'Test Parameter', 1, 0, 'L');
-        $pdf->Cell(70, 8, 'Observed Result', 1, 1, 'L');
+        $pdf->SetFont('Arial', 'B', 10);
+        $pdf->Cell(85, 8, 'Test Parameter', 1, 0, 'L');
+        $pdf->Cell(25, 8, 'Reading', 1, 0, 'L');
+        $pdf->Cell(43, 8, 'Reference Range', 1, 0, 'L');
+        $pdf->Cell(37, 8, 'Status', 1, 1, 'L');
 
-        $pdf->SetFont('Arial', '', 10);
+        $pdf->SetFont('Arial', '', 9);
         foreach ($results as $testName => $testValue) {
-            $pdf->Cell(110, 7, (string)$testName, 1, 0, 'L');
-            $pdf->Cell(70, 7, (string)$testValue, 1, 1, 'L');
+            $check = TestRanges::check((string)$testName, $testValue, (int)$report['patient_age'], $report['patient_gender']);
+            $pdf->Cell(85, 8, (string)$testName, 1, 0, 'L');
+            $pdf->Cell(25, 8, (string)$testValue, 1, 0, 'L');
+            $pdf->Cell(43, 8, $check['range'], 1, 0, 'L');
+            $pdf->SetFont('Arial', $check['style'] === 'okay' ? '' : 'B', 9);
+            $pdf->Cell(37, 8, $check['status'], 1, 1, 'L');
+            $pdf->SetFont('Arial', '', 9);
         }
+
 
         $outputMode = isset($_GET['download']) ? 'D' : 'I';
         $exportTime = (new DateTimeImmutable('now', new DateTimeZone('Asia/Colombo')))->format('Ymd_His');

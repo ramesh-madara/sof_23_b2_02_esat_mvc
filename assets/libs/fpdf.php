@@ -53,7 +53,7 @@ class FPDF
 
     public function Cell(float $cellWidth, float $cellHeight = 0.0, string $text = '', $cellBorder = 0, int $lineBreak = 0, string $alignment = '', bool $cellFill = false, string $link = ''): void
     {
-        $actualWidth = ($cellWidth == 0) ? ($this->pageWidth - $this->leftMargin - $this->rightMargin) : ($cellWidth * 2.83465);
+        $actualWidth = ($cellWidth == 0) ? ($this->pageWidth - $this->currentX - $this->rightMargin) : ($cellWidth * 2.83465);
         $actualHeight = ($cellHeight == 0) ? ($this->currentFontSize * 1.25) : ($cellHeight * 2.83465);
 
         $pdfX = $this->currentX;

@@ -1,12 +1,50 @@
 CREATE DATABASE IF NOT EXISTS blood_report_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE blood_report_system;
 
+CREATE TABLE IF NOT EXISTS report_templates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    type VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    fields JSON NOT NULL
+) ENGINE=InnoDB;
+
+INSERT INTO report_templates (type, name, fields)
+SELECT 'FBC', 'Full Blood Count (FBC)', '[{"name":"hemoglobin","label":"Hemoglobin (g/dL)","min":0.1,"max":35,"step":0.01,"minAge":20,"ranges":{"Male":{"min":14,"max":17,"strictMax":false,"label":"14 - 17"},"Female":{"min":12,"max":15,"strictMax":false,"label":"12 - 15"}}},{"name":"white_blood_cells","label":"White Blood Cell Count (x10^9/L)","min":0.1,"max":150,"step":0.01,"minAge":20,"ranges":{"all":{"min":4.5,"max":10,"strictMax":false,"label":"4.5 - 10"}}},{"name":"red_blood_cells","label":"Red Blood Cell Count (x10^12/L)","min":0.1,"max":15,"step":0.01,"minAge":20,"ranges":{"Male":{"min":5,"max":6,"strictMax":false,"label":"5 - 6"},"Female":{"min":4,"max":5,"strictMax":false,"label":"4 - 5"}}},{"name":"platelets","label":"Platelet Count (x10^9/L)","min":1,"max":2500,"step":1,"minAge":20,"ranges":{"all":{"min":140,"max":450,"strictMax":false,"label":"140 - 450"}}},{"name":"hematocrit","label":"Hematocrit (%)","min":1,"max":100,"step":0.01,"minAge":20,"ranges":{"Male":{"min":41,"max":50,"strictMax":false,"label":"41 - 50"},"Female":{"min":36,"max":44,"strictMax":false,"label":"36 - 44"}}}]'
+WHERE NOT EXISTS (SELECT 1 FROM report_templates WHERE type = 'FBC');
+
+INSERT INTO report_templates (type, name, fields)
+SELECT 'Lipid Profile', 'Lipid Profile', '[{"name":"total_cholesterol","label":"Total Cholesterol (mg/dL)","min":1,"max":1200,"step":0.01,"minAge":20,"ranges":{"all":{"min":null,"max":200,"strictMax":true,"label":"< 200"}}},{"name":"triglycerides","label":"Triglycerides (mg/dL)","min":1,"max":2500,"step":0.01,"minAge":20,"ranges":{"all":{"min":null,"max":150,"strictMax":true,"label":"< 150"}}},{"name":"hdl_cholesterol","label":"HDL Cholesterol (mg/dL)","min":1,"max":300,"step":0.01,"minAge":20,"ranges":{"Male":{"min":40,"max":null,"strictMax":false,"label":">= 40"},"Female":{"min":50,"max":null,"strictMax":false,"label":">= 50"}}},{"name":"ldl_cholesterol","label":"LDL Cholesterol (mg/dL)","min":1,"max":800,"step":0.01,"minAge":20,"ranges":{"all":{"min":null,"max":100,"strictMax":true,"label":"< 100"}}}]'
+WHERE NOT EXISTS (SELECT 1 FROM report_templates WHERE type = 'Lipid Profile');
+
+INSERT INTO report_templates (type, name, fields)
+SELECT 'Blood Sugar', 'Blood Sugar', '[{"name":"fasting_blood_sugar","label":"Fasting Blood Sugar (mg/dL)","min":10,"max":1200,"step":0.01,"minAge":20,"ranges":{"all":{"min":70,"max":100,"strictMax":true,"label":"70 - < 100"}}},{"name":"postprandial_blood_sugar","label":"Postprandial Blood Sugar (mg/dL)","min":10,"max":1500,"step":0.01,"minAge":20,"ranges":{"all":{"min":70,"max":140,"strictMax":true,"label":"70 - < 140"}},"hint":"Measure 2 hours after a meal."},{"name":"hba1c","label":"HbA1c (%)","min":1,"max":25,"step":0.01,"minAge":20,"ranges":{"all":{"min":null,"max":5.7,"strictMax":true,"label":"< 5.7"}}}]'
+WHERE NOT EXISTS (SELECT 1 FROM report_templates WHERE type = 'Blood Sugar');
+
+
 CREATE TABLE IF NOT EXISTS doctors (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     display_name VARCHAR(100) NOT NULL DEFAULT '',
     password VARCHAR(255) NOT NULL
 ) ENGINE=InnoDB;
+
+SET @name_column_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'doctors' AND COLUMN_NAME = 'display_name'
+);
+SET @update_schema = IF(
+    @name_column_exists = 0,
+    'ALTER TABLE doctors ADD COLUMN display_name VARCHAR(100) NOT NULL DEFAULT '''' AFTER username',
+    'SELECT 1'
+);
+PREPARE update_schema FROM @update_schema;
+EXECUTE update_schema;
+DEALLOCATE PREPARE update_schema;
+
+UPDATE doctors
+SET display_name = CASE WHEN username = 'demo_doctor' THEN 'Dr. Demo' ELSE username END
+WHERE display_name = '';
+
 INSERT INTO doctors (username, display_name, password)
 SELECT 'demo_doctor', 'Dr. Demo', '$2y$10$k/ZKdm/viq.gcLsDYPidsewpjMZ1/0JD8Pi.vstt4eqxyeUMGwUL6'
 WHERE NOT EXISTS (SELECT 1 FROM doctors WHERE username = 'demo_doctor');

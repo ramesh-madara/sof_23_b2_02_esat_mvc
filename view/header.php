@@ -4,8 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blood Report Generator</title>
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
     <style>
+        .result-status { display: inline-block; padding: 4px 8px; border: 1px solid currentColor; font-size: 12px; font-weight: 700; white-space: nowrap; }
+        .result-okay { color: #176438; background: #edf8f0; }
+        .result-low { color: #185b91; background: #edf5ff; }
+        .result-high { color: #a51d2d; background: #fff0f1; }
+        .result-review { color: #765319; background: #fff8e8; }
         * {
             box-sizing: border-box;
             box-shadow: none !important;

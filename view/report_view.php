@@ -58,11 +58,14 @@
         <thead>
             <tr>
                 <th>Test Parameter</th>
-                <th style="width: 280px; text-align: left;">Observed Reading</th>
+                <th>Observed Reading</th>
+                <th>Reference Range</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody>
             <?php foreach ($results as $fieldName => $reading): ?>
+                <?php $check = TestRanges::check((string)$fieldName, $reading, (int)$report['patient_age'], $report['patient_gender']); ?>
                 <tr>
                     <td>
                         <strong style="font-size: 14px;"><?php echo htmlspecialchars((string)$fieldName); ?></strong>
@@ -70,6 +73,8 @@
                     <td>
                         <strong style="font-size: 15px;"><?php echo htmlspecialchars((string)$reading); ?></strong>
                     </td>
+                    <td><?php echo htmlspecialchars($check['range']); ?></td>
+                    <td><span class="result-status result-<?php echo htmlspecialchars($check['style']); ?>"><?php echo htmlspecialchars($check['status']); ?></span></td>
                 </tr>
             <?php endforeach; ?>
         </tbody>
